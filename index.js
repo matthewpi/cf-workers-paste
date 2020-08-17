@@ -17,7 +17,7 @@ router.post("/", async (ctx) => {
 
     // Check if the request body is bigger than 20 KiB.
     if (body.length > (20 * 1024)) {
-        ctx.body = JSON.stringify({ message: "bad request", params: ["id"] });
+        ctx.body = JSON.stringify({ message: "payload too large" });
         ctx.response.headers = {
             "Content-Type": "application/json",
         };
@@ -27,7 +27,7 @@ router.post("/", async (ctx) => {
 
     const id = generateID();
 
-    // Upload the
+    // Set the paste into Workers KV.
     await PASTES.put(id, body, { expirationTtl: 60 * 60 * 24 });
 
     ctx.body = JSON.stringify({ id });
@@ -49,6 +49,7 @@ router.get("/:id", async (ctx) => {
         return;
     }
 
+    // Get the paste from Workers KV.
     const value = await PASTES.get(id);
     if (value === null) {
         ctx.body = JSON.stringify({ message: "resource does not exist" });
