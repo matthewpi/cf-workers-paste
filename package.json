@@ -1,0 +1,22 @@
+{
+    "name": "paste",
+    "version": "1.0.0",
+    "description": "package for creating workers templates",
+    "main": "index.js",
+    "license": "MIT",
+
+    "author": {
+        "name": "Matthew Penner",
+        "email": "me@matthewp.io",
+        "url": "https://matthewp.io"
+    },
+
+    "scripts": {
+        "test": "echo \"err: no tests specified\" && exit 1"
+    },
+
+    "dependencies": {
+        "cloudworker-router": "^1.10.1",
+        "serverless-cloudflare-workers": "^1.2.0"
+    }
+}
