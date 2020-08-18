@@ -2,7 +2,7 @@ const Router = require("cloudworker-router");
 
 const router = new Router();
 
-router.post("/", async (ctx) => {
+router.post("/documents", async (ctx) => {
     const body = await ctx.event.request.text();
 
     // Check if there is no request body.
@@ -25,19 +25,29 @@ router.post("/", async (ctx) => {
         return;
     }
 
+    // Get the editor mode.
+    let mode = "";
+    if ("X-CodeMirror-Mode" in ctx.event.request.headers) {
+        mode = ctx.event.request.headers["X-CodeMirror-Mode"];
+    }
+    if (mode === "") {
+        mode = "text/plain";
+    }
+
     const id = generateID();
 
     // Set the paste into Workers KV.
-    await PASTES.put(id, body, { expirationTtl: 60 * 60 * 24 });
+    await PASTES.put(id, mode + "\n\n\n" + body, { expirationTtl: 60 * 60 * 24 });
 
     ctx.body = JSON.stringify({ id });
     ctx.response.headers = {
         "Content-Type": "application/json",
+        "X-CodeMirror-Mode": mode,
     };
     ctx.status = 200;
 });
 
-router.get("/:id", async (ctx) => {
+router.get("/documents/:id", async (ctx) => {
     const id = ctx.params.id;
 
     if (id.length !== idLength) {
@@ -60,7 +70,13 @@ router.get("/:id", async (ctx) => {
         return;
     }
 
-    ctx.body = value;
+    const i = value.indexOf("\n\n\n");
+    const splits = [ value.slice(0, i), value.slice(i + "\n\n\n".length) ];
+
+    ctx.body = splits[1];
+    ctx.response.headers = {
+        "X-CodeMirror-Mode": splits[0],
+    }
     ctx.status = 200;
 });
 
