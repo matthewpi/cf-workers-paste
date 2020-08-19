@@ -78,18 +78,22 @@ router.get("/documents/:id", async (ctx) => {
     }
 
     switch (mode) {
-    case "header":
+    case "body":
+        ctx.body = value;
+        ctx.response.headers = {
+            "Content-Type": "text/plain",
+        };
+        break;
+
+    default:
         const i = value.indexOf("\n\n\n");
         const splits = [value.slice(0, i), value.slice(i + "\n\n\n".length)];
 
         ctx.body = splits[1];
         ctx.response.headers = {
+            "Content-Type": "text/plain",
             "x-codemirror-mode": splits[0],
-        }
-        break;
-
-    default:
-        ctx.body = value;
+        };
         break;
     }
 
