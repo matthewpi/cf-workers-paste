@@ -27,8 +27,8 @@ router.post("/documents", async (ctx) => {
 
     // Get the editor mode.
     let mode = "";
-    if ("X-CodeMirror-Mode" in ctx.event.request.headers) {
-        mode = ctx.event.request.headers["X-CodeMirror-Mode"];
+    if ("mode" in ctx.request.query) {
+        mode = ctx.request.query.mode;
     }
     if (mode === "") {
         mode = "text/plain";
@@ -42,7 +42,7 @@ router.post("/documents", async (ctx) => {
     ctx.body = JSON.stringify({ id });
     ctx.response.headers = {
         "Content-Type": "application/json",
-        "X-CodeMirror-Mode": mode,
+        "x-codemirror-mode": mode,
     };
     ctx.status = 200;
 });
@@ -70,13 +70,29 @@ router.get("/documents/:id", async (ctx) => {
         return;
     }
 
-    const i = value.indexOf("\n\n\n");
-    const splits = [ value.slice(0, i), value.slice(i + "\n\n\n".length) ];
-
-    ctx.body = splits[1];
-    ctx.response.headers = {
-        "X-CodeMirror-Mode": splits[0],
+    let mode;
+    if ("mode" in ctx.request.query) {
+        mode = ctx.request.query.mode;
+    } else {
+        mode = "";
     }
+
+    switch (mode) {
+    case "header":
+        const i = value.indexOf("\n\n\n");
+        const splits = [value.slice(0, i), value.slice(i + "\n\n\n".length)];
+
+        ctx.body = splits[1];
+        ctx.response.headers = {
+            "x-codemirror-mode": splits[0],
+        }
+        break;
+
+    default:
+        ctx.body = value;
+        break;
+    }
+
     ctx.status = 200;
 });
 
