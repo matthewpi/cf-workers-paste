@@ -1,5 +1,11 @@
 const Router = require("cloudworker-router");
 
+const corsHeader = {
+    "Access-Control-Allow-Origin":  "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, X-CodeMirror-Mode",
+};
+
 const router = new Router();
 
 router.post("/documents", async (ctx) => {
@@ -101,14 +107,49 @@ router.get("/documents/:id", async (ctx) => {
 });
 
 addEventListener("fetch", (e) => {
-    e.respondWith(router.resolve(e));
+    e.respondWith(handleRequest(e));
 });
+
+async function handleRequest(e) {
+    const r = e.request;
+
+    switch (r.method) {
+    case "OPTIONS":
+        if (r.headers.get("Origin") === null || r.headers.get("Access-Control-Request-Method") === null || r.headers.get("Access-Control-Request-Headers") === null) {
+            return new Response(null, {
+                headers: {
+                    "Allow": corsHeader["Access-Control-Allow-Headers"],
+                },
+            });
+        }
+
+        return new Response(null, {
+            headers: corsHeader,
+        });
+
+    case "GET":
+    case "HEAD":
+    case "POST":
+        const response = await router.resolve(e);
+
+        //response.headers.set("Access-Control-Allow-Origin", new URL(r.url).origin);
+        response.headers.set("Access-Control-Allow-Origin", r.headers.get("Origin"));
+        response.headers.append("Vary", "Origin");
+
+        return response;
+
+    default:
+        return new Response(null, {
+            status: 405,
+        });
+    }
+};
 
 const idLength = 16;
 const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 function generateID() {
-    let text = '';
+    let text = "";
 
     for (let i = 0; i < idLength; i++) {
         const index = Math.floor(Math.random() * characters.length);
