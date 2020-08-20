@@ -1,9 +1,10 @@
 const Router = require("cloudworker-router");
 
 const corsHeader = {
-    "Access-Control-Allow-Origin":  "*",
-    "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-CodeMirror-Mode",
+    "Access-Control-Allow-Origin":   "*",
+    "Access-Control-Allow-Methods":  "GET, HEAD, POST, OPTIONS",
+    "Access-Control-Allow-Headers":  "Content-Type, X-CodeMirror-Mode",
+    "Access-Control-Expose-Headers": "X-CodeMirror-Mode",
 };
 
 const router = new Router();
@@ -31,10 +32,10 @@ router.post("/documents", async (ctx) => {
         return;
     }
 
-    // Get the editor mode.
+    // Get the editor mode from the "X-CodeMirror-Mode" header.
     let mode = "";
-    if ("mode" in ctx.request.query) {
-        mode = ctx.request.query.mode;
+    if (ctx.event.request.headers.has("X-CodeMirror-Mode")) {
+        mode = ctx.event.request.headers.get("X-CodeMirror-Mode");
     }
     if (mode === "") {
         mode = "text/plain";
@@ -45,10 +46,10 @@ router.post("/documents", async (ctx) => {
     // Set the paste into Workers KV.
     await PASTES.put(id, mode + "\n\n\n" + body, { expirationTtl: 60 * 60 * 24 });
 
-    ctx.body = JSON.stringify({ id });
+    ctx.body = JSON.stringify({ id, mode });
     ctx.response.headers = {
-        "Content-Type": "application/json",
-        "x-codemirror-mode": mode,
+        "Content-Type":      "application/json",
+        "X-CodeMirror-Mode": mode,
     };
     ctx.status = 200;
 });
@@ -76,32 +77,14 @@ router.get("/documents/:id", async (ctx) => {
         return;
     }
 
-    let mode;
-    if ("mode" in ctx.request.query) {
-        mode = ctx.request.query.mode;
-    } else {
-        mode = "";
-    }
+    const i = value.indexOf("\n\n\n");
+    const splits = [ value.slice(0, i), value.slice(i + "\n\n\n".length) ];
 
-    switch (mode) {
-    case "body":
-        ctx.body = value;
-        ctx.response.headers = {
-            "Content-Type": "text/plain",
-        };
-        break;
-
-    default:
-        const i = value.indexOf("\n\n\n");
-        const splits = [value.slice(0, i), value.slice(i + "\n\n\n".length)];
-
-        ctx.body = splits[1];
-        ctx.response.headers = {
-            "Content-Type": "text/plain",
-            "x-codemirror-mode": splits[0],
-        };
-        break;
-    }
+    ctx.body = splits[1];
+    ctx.response.headers = {
+        "Content-Type":      "text/plain",
+        "X-CodeMirror-Mode": splits[0],
+    };
 
     ctx.status = 200;
 });
@@ -132,8 +115,8 @@ async function handleRequest(e) {
     case "POST":
         const response = await router.resolve(e);
 
-        //response.headers.set("Access-Control-Allow-Origin", new URL(r.url).origin);
         response.headers.set("Access-Control-Allow-Origin", r.headers.get("Origin"));
+        response.headers.set("Access-Control-Expose-Headers", corsHeader["Access-Control-Expose-Headers"]);
         response.headers.append("Vary", "Origin");
 
         return response;
